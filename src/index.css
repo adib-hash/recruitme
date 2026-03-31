@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+@theme {
+  --color-navy-950: #0F1A2E;
+  --color-navy-900: #1B2A4A;
+  --color-navy-800: #243660;
+  --color-navy-700: #2D4276;
+  --color-navy-600: #3B5998;
+  --color-accent: #3B82F6;
+  --color-accent-hover: #2563EB;
+  --color-surface: #FAFAF8;
+  --color-surface-dark: #111827;
+  --color-surface-card: #FFFFFF;
+  --color-surface-card-dark: #1F2937;
+  --color-border-light: #E5E7EB;
+  --color-border-dark: #374151;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6B7280;
+  --color-text-primary-dark: #F9FAFB;
+  --color-text-secondary-dark: #9CA3AF;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark mode by default */
+html {
+  color-scheme: dark;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+/* Prevent iOS auto-zoom on inputs */
+input, textarea, select {
+  font-size: 16px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #4B5563;
+  border-radius: 3px;
+}
