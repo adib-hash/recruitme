@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
+  Users,
   Menu,
   X,
   Sun,
@@ -12,6 +13,7 @@ import {
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/archetypes', label: 'Archetypes', icon: FileText },
+  { to: '/references', label: 'References', icon: Users },
 ];
 
 export default function AppShell({ children }: { children: React.ReactNode }) {

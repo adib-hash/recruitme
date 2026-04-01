@@ -112,6 +112,10 @@ The AI generates drafts appropriate to both dimensions. The user can generate mu
   Interview Prep          Add interviewer info (name, role, notes, files/screenshots), generate            P1 --- Should Have
                           personalized prep advice: areas to focus, questions to ask, experience
                           to emphasize, and additional coaching
+
+  References              Global reference bank with contact info, role, company, relationship,           P1 --- Should Have
+                          projects, and notes. AI recommends the best references for each
+                          opportunity based on role context and relevance.
   ----------------------- -------------------------------------------------------------------------------- ---------------------
 
 3.2 v2+ Roadmap (Out of Scope for v1)
@@ -147,6 +151,22 @@ The AI uses this information along with the job description to generate personal
 -   **Experience to Emphasize:** which parts of the user's background to highlight
 
 -   **Additional Advice:** rapport-building tips and general coaching
+
+2.5 References
+
+References are a global resource — they belong to the user, not a specific opportunity. Each reference stores:
+
+-   **Name, role, and company:** who they are professionally
+
+-   **Relationship:** how the user knows them (direct manager, peer, mentee, etc.)
+
+-   **Projects:** key work they did together
+
+-   **Notes:** what this person knows the user best for, strengths they'd highlight
+
+-   **Contact info:** email and phone for quick access
+
+When viewing an opportunity, the AI can recommend which references are the strongest fit based on the job description, company, and role context. Recommendations are ranked by relevance (strong match, good match, or possible) with an explanation for each.
 
 4\. Key User Flows
 
@@ -206,7 +226,29 @@ The AI uses this information along with the job description to generate personal
 
 7.  7\. User can regenerate prep as they add more context or interviewers
 
-4.4 Resume Archetype Management
+4.4 Reference Management & Recommendations
+
+**Trigger:** User wants to manage references or see which ones fit a specific role.
+
+**Management (via References page in sidebar):**
+
+1.  1\. User navigates to References from the sidebar
+
+2.  2\. Taps "Add Reference" and enters name, role, company, relationship, projects, notes, and contact info
+
+3.  3\. References persist globally and are available for recommendations across all opportunities
+
+**Recommendations (via Interview Prep tab on Opportunity):**
+
+1.  1\. Within an opportunity, user navigates to the Interview Prep tab
+
+2.  2\. Scrolls to the "Recommended References" section
+
+3.  3\. Taps "Get Recommendations" — AI ranks all references by fit for this specific role
+
+4.  4\. Each recommendation shows the reference name, match strength (strong/good/possible), and a reason explaining the relevance
+
+4.5 Resume Archetype Management
 
 **Trigger:** User wants to update a base template (e.g., new project to add, bullet rewording).
 
@@ -279,6 +321,9 @@ RecruitMe is a standard modern web app with three layers:
 
   interview_prep      id, opportunity_id, areas_to_focus, questions_to_ask,                  AI-generated prep advice per opportunity
                       experience_to_emphasize, additional_advice, created_at
+
+  references          id, name, role, company, relationship, projects, notes,               Global reference bank; not scoped to opportunity
+                      email, phone, created_at, updated_at
   ------------------- ---------------------------------------------------------------------- ---------------------------------------------------
 
 6\. Design Direction

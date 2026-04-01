@@ -11,12 +11,14 @@ import {
   useResearchFiles,
   useInterviewerInfo,
   useInterviewPrep,
+  useReferences,
 } from '../hooks/useFirestore';
 import StatusPipeline from '../components/opportunities/StatusPipeline';
 import ResumePreview from '../components/resume/ResumePreview';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import OutreachGenerator from '../components/outreach/OutreachGenerator';
 import InterviewPrep from '../components/interview/InterviewPrep';
+import ReferenceRecommendations from '../components/references/ReferenceRecommendations';
 import Toast from '../components/layout/Toast';
 import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
@@ -38,6 +40,7 @@ export default function OpportunityPage() {
   const { files: researchFiles, addFile: addResearchFile, deleteFile: deleteResearchFile } = useResearchFiles(id);
   const { interviewers, addInterviewer, updateInterviewer, deleteInterviewer } = useInterviewerInfo(id);
   const { prepResults, addPrepResult, deletePrepResult } = useInterviewPrep(id);
+  const { references } = useReferences();
 
   const [activeTab, setActiveTab] = useState<Tab>('resume');
   const [generating, setGenerating] = useState(false);
@@ -367,21 +370,32 @@ export default function OpportunityPage() {
           )}
 
           {activeTab === 'interview' && (
-            <InterviewPrep
-              opportunityId={opportunity.id}
-              company={opportunity.company}
-              role={opportunity.title}
-              jobDescription={opportunity.jdText}
-              interviewers={interviewers}
-              prepResults={prepResults}
-              onAddInterviewer={addInterviewer}
-              onUpdateInterviewer={updateInterviewer}
-              onDeleteInterviewer={deleteInterviewer}
-              onGeneratePrep={handleGeneratePrep}
-              onDeletePrep={deletePrepResult}
-              generating={generatingPrep}
-              onToast={(message, type) => setToast({ message, type })}
-            />
+            <div className="space-y-8">
+              <InterviewPrep
+                opportunityId={opportunity.id}
+                company={opportunity.company}
+                role={opportunity.title}
+                jobDescription={opportunity.jdText}
+                interviewers={interviewers}
+                prepResults={prepResults}
+                onAddInterviewer={addInterviewer}
+                onUpdateInterviewer={updateInterviewer}
+                onDeleteInterviewer={deleteInterviewer}
+                onGeneratePrep={handleGeneratePrep}
+                onDeletePrep={deletePrepResult}
+                generating={generatingPrep}
+                onToast={(message, type) => setToast({ message, type })}
+              />
+
+              <div className="border-t border-border-dark pt-6">
+                <ReferenceRecommendations
+                  references={references}
+                  jobDescription={opportunity.jdText}
+                  company={opportunity.company}
+                  role={opportunity.title}
+                />
+              </div>
+            </div>
           )}
 
           {activeTab === 'notes' && (

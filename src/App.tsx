@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import ArchetypesPage from './pages/ArchetypesPage';
 import ArchetypeEditor from './pages/ArchetypeEditor';
 import OpportunityPage from './pages/OpportunityPage';
+import ReferencesPage from './pages/ReferencesPage';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/archetypes" element={<ArchetypesPage />} />
           <Route path="/archetypes/:id" element={<ArchetypeEditor />} />
+          <Route path="/references" element={<ReferencesPage />} />
           <Route path="/opportunity/:id" element={<OpportunityPage />} />
         </Routes>
       </AppShell>

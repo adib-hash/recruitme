@@ -102,6 +102,20 @@ export interface InterviewerInfo {
   updatedAt: Date;
 }
 
+export interface Reference {
+  id: string;
+  name: string;
+  role: string;
+  company: string;
+  relationship: string;
+  projects: string;
+  notes: string;
+  email: string;
+  phone: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface InterviewPrepResult {
   id: string;
   opportunityId: string;

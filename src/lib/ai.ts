@@ -1,4 +1,4 @@
-import type { ResumeContent, OutreachAudience, OutreachMedium, InterviewPrepResult } from '../types';
+import type { ResumeContent, OutreachAudience, OutreachMedium, InterviewPrepResult, Reference } from '../types';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -141,4 +141,69 @@ export async function generateInterviewPrep(
     experienceToEmphasize,
     additionalAdvice,
   };
+}
+
+export interface ReferenceRecommendation {
+  referenceId: string;
+  reason: string;
+  strength: 'strong' | 'good' | 'possible';
+}
+
+export async function recommendReferences(
+  references: Reference[],
+  jobDescription: string,
+  company: string,
+  role: string
+): Promise<ReferenceRecommendation[]> {
+  await delay(1200);
+
+  if (references.length === 0) return [];
+
+  const jdLower = jobDescription.toLowerCase();
+  const roleLower = role.toLowerCase();
+
+  return references.map((ref) => {
+    const refContext = `${ref.role} ${ref.company} ${ref.relationship} ${ref.projects} ${ref.notes}`.toLowerCase();
+
+    let strength: 'strong' | 'good' | 'possible' = 'possible';
+    let reason = `${ref.name} can speak to your general professional capabilities and work ethic.`;
+
+    // Check for industry/company overlap
+    if (refContext.includes(company.toLowerCase())) {
+      strength = 'strong';
+      reason = `${ref.name} has direct experience at ${company} and can provide insider context on your fit for the team and culture.`;
+    }
+    // Check for role-type overlap
+    else if (
+      (roleLower.includes('strategy') && refContext.includes('strategy')) ||
+      (roleLower.includes('operations') && refContext.includes('operations')) ||
+      (roleLower.includes('engineering') && refContext.includes('engineering')) ||
+      (roleLower.includes('product') && refContext.includes('product'))
+    ) {
+      strength = 'strong';
+      reason = `${ref.name}'s experience in ${ref.role} at ${ref.company} aligns closely with this role. They can speak directly to your relevant skills and impact.`;
+    }
+    // Check for leadership/management overlap
+    else if (
+      (jdLower.includes('leadership') || jdLower.includes('management')) &&
+      (refContext.includes('direct report') || refContext.includes('managed') || refContext.includes('led'))
+    ) {
+      strength = 'good';
+      reason = `${ref.name} can attest to your leadership style and team management — relevant for the leadership aspects of this role.`;
+    }
+    // Check for project overlap
+    else if (ref.projects && ref.projects.length > 10) {
+      strength = 'good';
+      reason = `${ref.name} collaborated with you on key projects and can speak to your execution, collaboration, and impact.`;
+    }
+
+    return {
+      referenceId: ref.id,
+      reason,
+      strength,
+    };
+  }).sort((a, b) => {
+    const order = { strong: 0, good: 1, possible: 2 };
+    return order[a.strength] - order[b.strength];
+  });
 }

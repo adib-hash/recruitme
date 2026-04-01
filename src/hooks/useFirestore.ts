@@ -25,6 +25,7 @@ import type {
   ResumeContent,
   InterviewerInfo,
   InterviewPrepResult,
+  Reference,
 } from '../types';
 
 function toDate(val: unknown): Date {
@@ -485,4 +486,63 @@ export function useInterviewPrep(opportunityId: string | undefined) {
   }, []);
 
   return { prepResults, loading, addPrepResult, deletePrepResult };
+}
+
+// References (global, not per-opportunity)
+export function useReferences() {
+  const [references, setReferences] = useState<Reference[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = onSnapshot(
+      query(collection(db, 'references'), orderBy('updatedAt', 'desc')),
+      (snap) => {
+        setReferences(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              name: data.name || '',
+              role: data.role || '',
+              company: data.company || '',
+              relationship: data.relationship || '',
+              projects: data.projects || '',
+              notes: data.notes || '',
+              email: data.email || '',
+              phone: data.phone || '',
+              createdAt: toDate(data.createdAt),
+              updatedAt: toDate(data.updatedAt),
+            };
+          })
+        );
+        setLoading(false);
+      },
+      (err) => {
+        setError(err.message);
+        setLoading(false);
+      }
+    );
+    return unsub;
+  }, []);
+
+  const addReference = useCallback(async (data: Omit<Reference, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const ref = await addDoc(collection(db, 'references'), {
+      ...data,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+    return ref.id;
+  }, []);
+
+  const updateReference = useCallback(async (id: string, data: Partial<Reference>) => {
+    const { id: _, ...rest } = data as Record<string, unknown>;
+    await updateDoc(doc(db, 'references', id), { ...rest, updatedAt: Timestamp.now() });
+  }, []);
+
+  const deleteReference = useCallback(async (id: string) => {
+    await deleteDoc(doc(db, 'references', id));
+  }, []);
+
+  return { references, loading, error, addReference, updateReference, deleteReference };
 }
