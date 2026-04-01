@@ -23,6 +23,8 @@ import type {
   ChatMessage,
   ResearchFile,
   ResumeContent,
+  InterviewerInfo,
+  InterviewPrepResult,
 } from '../types';
 
 function toDate(val: unknown): Date {
@@ -371,4 +373,116 @@ export function useResearchFiles(opportunityId: string | undefined) {
   }, []);
 
   return { files, loading, addFile, deleteFile };
+}
+
+// Interviewer Info
+export function useInterviewerInfo(opportunityId: string | undefined) {
+  const [interviewers, setInterviewers] = useState<InterviewerInfo[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!opportunityId) { setLoading(false); return; }
+    const unsub = onSnapshot(
+      query(
+        collection(db, 'interviewerInfo'),
+        where('opportunityId', '==', opportunityId),
+        orderBy('createdAt', 'desc')
+      ),
+      (snap) => {
+        setInterviewers(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              opportunityId: data.opportunityId,
+              name: data.name || '',
+              role: data.role || '',
+              notes: data.notes || '',
+              fileUrls: data.fileUrls || [],
+              fileNames: data.fileNames || [],
+              createdAt: toDate(data.createdAt),
+              updatedAt: toDate(data.updatedAt),
+            };
+          })
+        );
+        setLoading(false);
+      }
+    );
+    return unsub;
+  }, [opportunityId]);
+
+  const addInterviewer = useCallback(
+    async (data: Omit<InterviewerInfo, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const ref = await addDoc(collection(db, 'interviewerInfo'), {
+        ...data,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      });
+      return ref.id;
+    },
+    []
+  );
+
+  const updateInterviewer = useCallback(async (id: string, data: Partial<InterviewerInfo>) => {
+    const { id: _, ...rest } = data as Record<string, unknown>;
+    await updateDoc(doc(db, 'interviewerInfo', id), { ...rest, updatedAt: Timestamp.now() });
+  }, []);
+
+  const deleteInterviewer = useCallback(async (id: string) => {
+    await deleteDoc(doc(db, 'interviewerInfo', id));
+  }, []);
+
+  return { interviewers, loading, addInterviewer, updateInterviewer, deleteInterviewer };
+}
+
+// Interview Prep Results
+export function useInterviewPrep(opportunityId: string | undefined) {
+  const [prepResults, setPrepResults] = useState<InterviewPrepResult[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!opportunityId) { setLoading(false); return; }
+    const unsub = onSnapshot(
+      query(
+        collection(db, 'interviewPrep'),
+        where('opportunityId', '==', opportunityId),
+        orderBy('createdAt', 'desc')
+      ),
+      (snap) => {
+        setPrepResults(
+          snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              opportunityId: data.opportunityId,
+              areasToFocus: data.areasToFocus || [],
+              questionsToAsk: data.questionsToAsk || [],
+              experienceToEmphasize: data.experienceToEmphasize || [],
+              additionalAdvice: data.additionalAdvice || '',
+              createdAt: toDate(data.createdAt),
+            };
+          })
+        );
+        setLoading(false);
+      }
+    );
+    return unsub;
+  }, [opportunityId]);
+
+  const addPrepResult = useCallback(
+    async (data: Omit<InterviewPrepResult, 'id' | 'createdAt'>) => {
+      const ref = await addDoc(collection(db, 'interviewPrep'), {
+        ...data,
+        createdAt: Timestamp.now(),
+      });
+      return ref.id;
+    },
+    []
+  );
+
+  const deletePrepResult = useCallback(async (id: string) => {
+    await deleteDoc(doc(db, 'interviewPrep', id));
+  }, []);
+
+  return { prepResults, loading, addPrepResult, deletePrepResult };
 }

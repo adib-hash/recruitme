@@ -9,19 +9,22 @@ import {
   useChatHistory,
   useOutreachMessages,
   useResearchFiles,
+  useInterviewerInfo,
+  useInterviewPrep,
 } from '../hooks/useFirestore';
 import StatusPipeline from '../components/opportunities/StatusPipeline';
 import ResumePreview from '../components/resume/ResumePreview';
 import ChatSidebar from '../components/chat/ChatSidebar';
 import OutreachGenerator from '../components/outreach/OutreachGenerator';
+import InterviewPrep from '../components/interview/InterviewPrep';
 import Toast from '../components/layout/Toast';
-import { generateTailoredResume } from '../lib/ai';
+import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
 import type { OpportunityStatus, ResumeContent } from '../types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 
-type Tab = 'resume' | 'outreach' | 'research' | 'notes';
+type Tab = 'resume' | 'outreach' | 'research' | 'interview' | 'notes';
 
 export default function OpportunityPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,9 +36,12 @@ export default function OpportunityPage() {
   const { messages: chatMessages, addMessage: addChatMessage } = useChatHistory(id);
   const { messages: outreachMessages, addMessages: addOutreachMessages } = useOutreachMessages(id);
   const { files: researchFiles, addFile: addResearchFile, deleteFile: deleteResearchFile } = useResearchFiles(id);
+  const { interviewers, addInterviewer, updateInterviewer, deleteInterviewer } = useInterviewerInfo(id);
+  const { prepResults, addPrepResult, deletePrepResult } = useInterviewPrep(id);
 
   const [activeTab, setActiveTab] = useState<Tab>('resume');
   const [generating, setGenerating] = useState(false);
+  const [generatingPrep, setGeneratingPrep] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [notes, setNotes] = useState('');
@@ -140,6 +146,32 @@ export default function OpportunityPage() {
     }
   };
 
+  const handleGeneratePrep = async () => {
+    if (!opportunity || interviewers.length === 0) return;
+    setGeneratingPrep(true);
+    try {
+      const primaryInterviewer = interviewers[0];
+      const allNotes = interviewers.map((i) => `${i.name} (${i.role}): ${i.notes}`).join('\n\n');
+      const result = await generateInterviewPrep(
+        opportunity.jdText,
+        opportunity.company,
+        opportunity.title,
+        primaryInterviewer.name,
+        primaryInterviewer.role,
+        allNotes
+      );
+      await addPrepResult({
+        opportunityId: opportunity.id,
+        ...result,
+      });
+      setToast({ message: 'Interview prep generated', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to generate prep', type: 'error' });
+    } finally {
+      setGeneratingPrep(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -160,6 +192,7 @@ export default function OpportunityPage() {
     { key: 'resume', label: 'Resume' },
     { key: 'outreach', label: 'Outreach' },
     { key: 'research', label: 'Research' },
+    { key: 'interview', label: 'Interview Prep' },
     { key: 'notes', label: 'Notes' },
   ];
 
@@ -331,6 +364,24 @@ export default function OpportunityPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {activeTab === 'interview' && (
+            <InterviewPrep
+              opportunityId={opportunity.id}
+              company={opportunity.company}
+              role={opportunity.title}
+              jobDescription={opportunity.jdText}
+              interviewers={interviewers}
+              prepResults={prepResults}
+              onAddInterviewer={addInterviewer}
+              onUpdateInterviewer={updateInterviewer}
+              onDeleteInterviewer={deleteInterviewer}
+              onGeneratePrep={handleGeneratePrep}
+              onDeletePrep={deletePrepResult}
+              generating={generatingPrep}
+              onToast={(message, type) => setToast({ message, type })}
+            />
           )}
 
           {activeTab === 'notes' && (

@@ -1,4 +1,4 @@
-import type { ResumeContent, OutreachAudience, OutreachMedium } from '../types';
+import type { ResumeContent, OutreachAudience, OutreachMedium, InterviewPrepResult } from '../types';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -84,4 +84,61 @@ export async function generateOutreachMessages(
     `Subject: ${role} Opportunity at ${company}\n\nHi,\n\nI'm writing to express my strong interest in the ${role} position at ${company}. With my background in strategic operations and a track record of driving cross-functional initiatives, I believe I could make a meaningful contribution to your team.\n\nI'd welcome the opportunity to discuss how my experience aligns with what you're looking for. Would you have 15 minutes for a call this week?\n\nBest regards`,
     `Subject: Interested in ${role} at ${company}\n\nHi,\n\nI recently came across the ${role} opening and was excited by the alignment with my background. I've spent the last several years driving [relevant outcomes] and am eager to bring that experience to ${company}.\n\nI'd love to connect if you're open to it. Happy to work around your schedule.\n\nBest`,
   ];
+}
+
+export async function generateInterviewPrep(
+  jobDescription: string,
+  company: string,
+  role: string,
+  interviewerName: string,
+  interviewerRole: string,
+  interviewerNotes: string
+): Promise<Omit<InterviewPrepResult, 'id' | 'opportunityId' | 'createdAt'>> {
+  await delay(1500);
+
+  const focusAreas = [
+    `Research ${company}'s recent strategic initiatives, funding rounds, or market positioning — be ready to reference specifics`,
+    `Understand the team structure around the ${role} position and where it fits in the org`,
+    `Prepare concrete examples of cross-functional leadership and measurable impact from prior roles`,
+  ];
+
+  if (interviewerRole.toLowerCase().includes('engineer') || interviewerRole.toLowerCase().includes('technical')) {
+    focusAreas.push('Be prepared to discuss technical fluency — frameworks, tools, and data-driven decision making');
+  } else if (interviewerRole.toLowerCase().includes('director') || interviewerRole.toLowerCase().includes('vp') || interviewerRole.toLowerCase().includes('head')) {
+    focusAreas.push('Focus on strategic vision, team scaling, and organizational impact — this interviewer likely cares about leadership trajectory');
+  }
+
+  const questionsToAsk = [
+    `What does success look like for the ${role} in the first 90 days?`,
+    `How does this role interact with ${interviewerName ? interviewerName + "'s" : 'your'} team on a day-to-day basis?`,
+    `What's the biggest challenge the team is facing right now that this hire would help address?`,
+    `How does ${company} think about professional development and growth for this role?`,
+    `What drew you to ${company}, and what's kept you here?`,
+  ];
+
+  const experienceToEmphasize = [
+    'Strategic operations work — highlight cases where you drove cross-functional alignment and delivered measurable outcomes',
+    'Any experience in the same industry or adjacent markets — draw direct parallels to their business',
+    'Data-driven decision making — concrete examples of using analysis to inform strategy',
+    'Leadership in ambiguity — times you built process or structure where none existed',
+  ];
+
+  let additionalAdvice = `Since you're meeting with ${interviewerName || 'the interviewer'}`;
+  if (interviewerRole) {
+    additionalAdvice += ` (${interviewerRole})`;
+  }
+  additionalAdvice += `, tailor your language to their perspective. `;
+
+  if (interviewerNotes) {
+    additionalAdvice += `Based on the context you provided, look for shared interests or experiences to build rapport early in the conversation. `;
+  }
+
+  additionalAdvice += `Remember: interviews are two-way. You're evaluating them as much as they're evaluating you. Be curious, be specific, and let your genuine interest in the role come through.`;
+
+  return {
+    areasToFocus: focusAreas,
+    questionsToAsk,
+    experienceToEmphasize,
+    additionalAdvice,
+  };
 }

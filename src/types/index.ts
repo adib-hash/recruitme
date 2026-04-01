@@ -89,3 +89,25 @@ export interface ChatMessage {
   content: string;
   createdAt: Date;
 }
+
+export interface InterviewerInfo {
+  id: string;
+  opportunityId: string;
+  name: string;
+  role: string;
+  notes: string;
+  fileUrls: string[];
+  fileNames: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InterviewPrepResult {
+  id: string;
+  opportunityId: string;
+  areasToFocus: string[];
+  questionsToAsk: string[];
+  experienceToEmphasize: string[];
+  additionalAdvice: string;
+  createdAt: Date;
+}
