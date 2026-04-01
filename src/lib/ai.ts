@@ -96,50 +96,97 @@ export async function generateInterviewPrep(
 ): Promise<Omit<InterviewPrepResult, 'id' | 'opportunityId' | 'createdAt'>> {
   await delay(1500);
 
-  const focusAreas = [
-    `Research ${company}'s recent strategic initiatives, funding rounds, or market positioning — be ready to reference specifics`,
-    `Understand the team structure around the ${role} position and where it fits in the org`,
-    `Prepare concrete examples of cross-functional leadership and measurable impact from prior roles`,
-  ];
+  const isTechnical = /engineer|technical|cto|architect/i.test(interviewerRole);
+  const isSeniorLeader = /director|vp|head|chief|president|ceo|partner/i.test(interviewerRole);
+  const interviewer = interviewerName || 'the interviewer';
+  const interviewerCtx = interviewerRole ? `${interviewer} (${interviewerRole})` : interviewer;
 
-  if (interviewerRole.toLowerCase().includes('engineer') || interviewerRole.toLowerCase().includes('technical')) {
-    focusAreas.push('Be prepared to discuss technical fluency — frameworks, tools, and data-driven decision making');
-  } else if (interviewerRole.toLowerCase().includes('director') || interviewerRole.toLowerCase().includes('vp') || interviewerRole.toLowerCase().includes('head')) {
-    focusAreas.push('Focus on strategic vision, team scaling, and organizational impact — this interviewer likely cares about leadership trajectory');
-  }
-
-  const questionsToAsk = [
-    `What does success look like for the ${role} in the first 90 days?`,
-    `How does this role interact with ${interviewerName ? interviewerName + "'s" : 'your'} team on a day-to-day basis?`,
-    `What's the biggest challenge the team is facing right now that this hire would help address?`,
-    `How does ${company} think about professional development and growth for this role?`,
-    `What drew you to ${company}, and what's kept you here?`,
-  ];
-
-  const experienceToEmphasize = [
-    'Strategic operations work — highlight cases where you drove cross-functional alignment and delivered measurable outcomes',
-    'Any experience in the same industry or adjacent markets — draw direct parallels to their business',
-    'Data-driven decision making — concrete examples of using analysis to inform strategy',
-    'Leadership in ambiguity — times you built process or structure where none existed',
-  ];
-
-  let additionalAdvice = `Since you're meeting with ${interviewerName || 'the interviewer'}`;
-  if (interviewerRole) {
-    additionalAdvice += ` (${interviewerRole})`;
-  }
-  additionalAdvice += `, tailor your language to their perspective. `;
-
+  let interviewerAnalysis = '';
   if (interviewerNotes) {
-    additionalAdvice += `Based on the context you provided, look for shared interests or experiences to build rapport early in the conversation. `;
+    interviewerAnalysis = `\n\n## What This Means for You\n\n`;
+    if (isSeniorLeader) {
+      interviewerAnalysis += `* As a senior leader, ${interviewer} is likely evaluating strategic thinking, leadership trajectory, and cultural alignment — not just technical execution. Lead with judgment and impact, not just process.\n\n`;
+      interviewerAnalysis += `* With their seniority, they probably have significant influence on the hiring decision. This conversation is about trust and fit as much as it is about skills.\n\n`;
+      interviewerAnalysis += `* Demonstrate that you understand the business context, not just the role requirements. Show you can think at their level while executing at the ground level.`;
+    } else if (isTechnical) {
+      interviewerAnalysis += `* ${interviewer}'s technical background means they'll appreciate concrete details — specific tools, frameworks, methodologies, and data-driven examples.\n\n`;
+      interviewerAnalysis += `* Don't over-explain basic concepts; instead, show depth and nuance in your technical understanding.\n\n`;
+      interviewerAnalysis += `* If you have any hands-on building experience (side projects, tools you've built, technical initiatives you've led), this is a strong differentiator.`;
+    } else {
+      interviewerAnalysis += `* ${interviewer} will be evaluating how you'd work cross-functionally and whether you can communicate clearly across teams.\n\n`;
+      interviewerAnalysis += `* Focus on collaborative examples — times you've partnered with different functions to drive outcomes.\n\n`;
+      interviewerAnalysis += `* Show genuine curiosity about their perspective and how the role intersects with their work.`;
+    }
   }
 
-  additionalAdvice += `Remember: interviews are two-way. You're evaluating them as much as they're evaluating you. Be curious, be specific, and let your genuine interest in the role come through.`;
+  const briefMarkdown = `**INTERVIEW PREP BRIEF**
+
+**${company} — ${role}**
+
+*Interview with ${interviewerCtx}*
+
+# The Company & The Interviewer
+
+**${company}** is hiring for the **${role}** position. ${jobDescription ? `Based on the job description, the team is looking for someone who can drive impact across ${jobDescription.length > 200 ? 'multiple dimensions of the business' : 'key initiatives'}. Review the full JD carefully before the interview — be ready to connect your experience to their specific needs and language.` : 'Research the company thoroughly before the interview — understand their market position, recent news, team structure, and strategic priorities.'}
+
+**Your interviewer** is ${interviewerCtx}.${interviewerNotes ? ` ${interviewerNotes}` : ' Research them on LinkedIn before the interview — understand their background, tenure at the company, and any shared connections or interests.'}${interviewerAnalysis}
+
+# What to Emphasize
+
+* **Relevant domain experience.** Draw direct parallels between your background and what ${company} does. The more specific you can be about industry overlap, similar challenges, or transferable skills, the stronger your case.
+
+* **Measurable impact.** Every claim should have a number or outcome attached. Revenue grown, teams scaled, processes built, efficiency gained. ${isSeniorLeader ? 'Senior leaders think in outcomes, not activities.' : 'Concrete results are more memorable than abstract descriptions.'}
+
+* **Cross-functional leadership.** Show that you can work across teams, influence without authority, and drive alignment. ${company} likely needs someone who can operate in ambiguity and bring structure.
+
+* **Genuine curiosity about the role.** Don't just answer questions — show that you've thought deeply about what this role entails, what the challenges are, and why you're the right person to tackle them.${isTechnical ? '\n\n* **Technical fluency.** With a technical interviewer, don\'t shy away from specifics. Mention tools, frameworks, data approaches, and any hands-on building you\'ve done. This differentiates you from candidates who can only speak at a high level.' : ''}
+
+# What to De-Emphasize
+
+* **Irrelevant experience.** If you have roles or projects that don't connect to this opportunity, mention them briefly for context but don't dwell. Pivot quickly to what's relevant.
+
+* **Title or seniority for its own sake.** Lead with what you did and learned, not the title. The risk of overemphasizing seniority is seeming overqualified or inflexible.
+
+* **Complaints about previous roles.** Frame transitions positively — what you learned, what you're moving toward, not what you're running from.
+
+# Your "Why ${company}" Narrative
+
+*Core narrative (practice this in 60-90 seconds):*
+
+"I've spent my career building skills in [your core domain] — from [earliest relevant role] through [most recent relevant experience]. What excites me about ${company} is [specific aspect of the company — mission, product, team, market position]. The ${role} sits at the intersection of [2-3 things you're good at], which is exactly where I do my best work. I'm not looking for just any next step — I'm looking for a place where my specific experience in [key differentiator] creates outsized value, and everything I've learned about ${company} tells me this is that place."
+
+# Questions to Anticipate
+
+1. **"Walk me through your background."** Use the narrative above. 90 seconds max. Hit the highlights, connect the dots, and land on why you're here. Don't recite your resume — tell a story with a through-line.
+
+2. **"Why ${company}?"** Be specific. Reference something real — a product decision, a company value, a market thesis, a person you've spoken to. Generic answers like "I love the mission" fall flat. Show you've done your homework.
+
+3. **"Why this role?"** Connect your skills and interests to the specific responsibilities. Explain why this is the right role at the right time in your career — not just a lateral move, but a deliberate step.
+
+4. **"Tell me about a time you [faced a challenge / led a team / drove results]."** Have 2-3 STAR stories ready. Pick situations that mirror the challenges this role likely faces. Be specific about your actions and the outcome.
+
+5. **"What's your biggest weakness / area for growth?"** Pick something real but not disqualifying. Frame it as self-awareness plus active improvement. ${isSeniorLeader ? 'Senior leaders respect honesty over polish here.' : ''}
+
+6. **"Where do you see yourself in 3-5 years?"** Align your answer with growing within ${company}'s trajectory. Show ambition that serves their goals, not just yours.
+
+7. **"Do you have any questions for me?"** Always say yes. Your questions below are your chance to demonstrate depth of thought and genuine interest.
+
+# Questions to Ask ${interviewer}
+
+* "What does success look like for the ${role} in the first 6-12 months? What would make you confident this was the right hire?"
+
+* "What's the biggest challenge the team is facing right now that this person would help solve?"
+
+* "How does this role collaborate with ${interviewerRole ? `your team (${interviewerRole})` : 'other functions'} on a day-to-day basis?"
+
+* "What's something about working at ${company} that surprised you — something you didn't expect before joining?"
+
+* "How does ${company} think about professional growth and development for someone in this role?"
+
+* "What would you want me to know about the team culture that I wouldn't get from the job description?"`;
 
   return {
-    areasToFocus: focusAreas,
-    questionsToAsk,
-    experienceToEmphasize,
-    additionalAdvice,
+    briefMarkdown,
   };
 }
 

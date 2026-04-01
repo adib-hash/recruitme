@@ -119,9 +119,13 @@ export interface Reference {
 export interface InterviewPrepResult {
   id: string;
   opportunityId: string;
-  areasToFocus: string[];
-  questionsToAsk: string[];
-  experienceToEmphasize: string[];
-  additionalAdvice: string;
+  // Legacy structured fields (optional for backward compat)
+  areasToFocus?: string[];
+  questionsToAsk?: string[];
+  experienceToEmphasize?: string[];
+  additionalAdvice?: string;
+  // Rich brief format
+  briefMarkdown?: string;
+  scratchpad?: string;
   createdAt: Date;
 }

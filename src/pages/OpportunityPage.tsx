@@ -39,7 +39,7 @@ export default function OpportunityPage() {
   const { messages: outreachMessages, addMessages: addOutreachMessages } = useOutreachMessages(id);
   const { files: researchFiles, addFile: addResearchFile, deleteFile: deleteResearchFile } = useResearchFiles(id);
   const { interviewers, addInterviewer, updateInterviewer, deleteInterviewer } = useInterviewerInfo(id);
-  const { prepResults, addPrepResult, deletePrepResult } = useInterviewPrep(id);
+  const { prepResults, addPrepResult, updatePrepResult, deletePrepResult } = useInterviewPrep(id);
   const { references } = useReferences();
 
   const [activeTab, setActiveTab] = useState<Tab>('resume');
@@ -382,6 +382,7 @@ export default function OpportunityPage() {
                 onUpdateInterviewer={updateInterviewer}
                 onDeleteInterviewer={deleteInterviewer}
                 onGeneratePrep={handleGeneratePrep}
+                onUpdatePrep={updatePrepResult}
                 onDeletePrep={deletePrepResult}
                 generating={generatingPrep}
                 onToast={(message, type) => setToast({ message, type })}

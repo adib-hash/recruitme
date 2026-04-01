@@ -456,10 +456,12 @@ export function useInterviewPrep(opportunityId: string | undefined) {
             return {
               id: d.id,
               opportunityId: data.opportunityId,
-              areasToFocus: data.areasToFocus || [],
-              questionsToAsk: data.questionsToAsk || [],
-              experienceToEmphasize: data.experienceToEmphasize || [],
-              additionalAdvice: data.additionalAdvice || '',
+              areasToFocus: data.areasToFocus || undefined,
+              questionsToAsk: data.questionsToAsk || undefined,
+              experienceToEmphasize: data.experienceToEmphasize || undefined,
+              additionalAdvice: data.additionalAdvice || undefined,
+              briefMarkdown: data.briefMarkdown || undefined,
+              scratchpad: data.scratchpad || '',
               createdAt: toDate(data.createdAt),
             };
           })
@@ -481,11 +483,16 @@ export function useInterviewPrep(opportunityId: string | undefined) {
     []
   );
 
+  const updatePrepResult = useCallback(async (id: string, data: Partial<InterviewPrepResult>) => {
+    const { id: _id, createdAt: _ca, ...rest } = data;
+    await updateDoc(doc(db, 'interviewPrep', id), rest);
+  }, []);
+
   const deletePrepResult = useCallback(async (id: string) => {
     await deleteDoc(doc(db, 'interviewPrep', id));
   }, []);
 
-  return { prepResults, loading, addPrepResult, deletePrepResult };
+  return { prepResults, loading, addPrepResult, updatePrepResult, deletePrepResult };
 }
 
 // References (global, not per-opportunity)

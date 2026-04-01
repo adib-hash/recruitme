@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import {
   UserCircle,
   Plus,
@@ -14,10 +14,14 @@ import {
   Lightbulb,
   X,
   FileText,
+  Copy,
+  ClipboardCheck,
+  PenLine,
 } from 'lucide-react';
 import type { InterviewerInfo, InterviewPrepResult } from '../../types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
+import MarkdownBrief from './MarkdownBrief';
 
 interface InterviewPrepProps {
   opportunityId: string;
@@ -30,6 +34,7 @@ interface InterviewPrepProps {
   onUpdateInterviewer: (id: string, data: Partial<InterviewerInfo>) => Promise<void>;
   onDeleteInterviewer: (id: string) => Promise<void>;
   onGeneratePrep: () => Promise<void>;
+  onUpdatePrep: (id: string, data: Partial<InterviewPrepResult>) => Promise<void>;
   onDeletePrep: (id: string) => Promise<void>;
   generating: boolean;
   onToast: (message: string, type: 'success' | 'error') => void;
@@ -37,14 +42,15 @@ interface InterviewPrepProps {
 
 export default function InterviewPrep({
   opportunityId,
-  company,
-  role,
+  company: _company,
+  role: _role,
   interviewers,
   prepResults,
   onAddInterviewer,
   onUpdateInterviewer,
   onDeleteInterviewer,
   onGeneratePrep,
+  onUpdatePrep,
   onDeletePrep,
   generating,
   onToast,
@@ -60,6 +66,34 @@ export default function InterviewPrep({
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
   const [editNotes, setEditNotes] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [scratchpadValues, setScratchpadValues] = useState<Record<string, string>>({});
+  const scratchpadTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  const handleCopy = async (prep: InterviewPrepResult) => {
+    const text = prep.briefMarkdown || '';
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedId(prep.id);
+      onToast('Brief copied to clipboard', 'success');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      onToast('Failed to copy', 'error');
+    }
+  };
+
+  const handleScratchpadChange = useCallback((prepId: string, value: string) => {
+    setScratchpadValues((prev) => ({ ...prev, [prepId]: value }));
+    // Debounced auto-save
+    if (scratchpadTimers.current[prepId]) {
+      clearTimeout(scratchpadTimers.current[prepId]);
+    }
+    scratchpadTimers.current[prepId] = setTimeout(() => {
+      onUpdatePrep(prepId, { scratchpad: value }).catch(() => {
+        onToast('Failed to save scratchpad', 'error');
+      });
+    }, 1000);
+  }, [onUpdatePrep, onToast]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -355,11 +389,13 @@ export default function InterviewPrep({
         <div className="space-y-3">
           <h3 className="text-sm font-semibold text-text-secondary-dark flex items-center gap-2">
             <Lightbulb size={16} />
-            Prep Advice
+            Prep Briefs
           </h3>
 
           {prepResults.map((prep) => {
             const isExpanded = expandedPrep === prep.id;
+            const hasBrief = !!prep.briefMarkdown;
+
             return (
               <div
                 key={prep.id}
@@ -373,6 +409,18 @@ export default function InterviewPrep({
                     Prep — {prep.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
                   </span>
                   <div className="flex items-center gap-2">
+                    {hasBrief && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(prep);
+                        }}
+                        className="p-1 rounded hover:bg-white/10 text-text-secondary-dark hover:text-accent transition-all cursor-pointer"
+                        title="Copy brief to clipboard"
+                      >
+                        {copiedId === prep.id ? <ClipboardCheck size={13} /> : <Copy size={13} />}
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -386,63 +434,89 @@ export default function InterviewPrep({
                   </div>
                 </button>
 
-                {isExpanded && (
+                {isExpanded && hasBrief && (
+                  <div className="px-4 pb-4">
+                    <MarkdownBrief markdown={prep.briefMarkdown!} />
+
+                    {/* Scratchpad */}
+                    <div className="mt-8 pt-6 border-t border-border-dark">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-text-secondary-dark flex items-center gap-1.5 mb-3">
+                        <PenLine size={14} />
+                        Scratchpad
+                      </h4>
+                      <textarea
+                        value={scratchpadValues[prep.id] ?? prep.scratchpad ?? ''}
+                        onChange={(e) => handleScratchpadChange(prep.id, e.target.value)}
+                        rows={6}
+                        placeholder="Your personal notes, talking points, stories to remember..."
+                        className="w-full bg-transparent border border-border-dark rounded-lg px-3 py-2 text-sm outline-none focus:border-accent transition-colors resize-none text-text-primary-dark leading-relaxed"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Legacy format fallback */}
+                {isExpanded && !hasBrief && (
                   <div className="px-4 pb-4 space-y-5">
-                    {/* Areas to Focus */}
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5 mb-2">
-                        <Target size={14} />
-                        Areas to Focus
-                      </h4>
-                      <ul className="space-y-2">
-                        {prep.areasToFocus.map((area, i) => (
-                          <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-accent/60">
-                            {area}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {prep.areasToFocus && prep.areasToFocus.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-accent flex items-center gap-1.5 mb-2">
+                          <Target size={14} />
+                          Areas to Focus
+                        </h4>
+                        <ul className="space-y-2">
+                          {prep.areasToFocus.map((area, i) => (
+                            <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-accent/60">
+                              {area}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                    {/* Questions to Ask */}
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-green-400 flex items-center gap-1.5 mb-2">
-                        <HelpCircle size={14} />
-                        Questions to Ask
-                      </h4>
-                      <ul className="space-y-2">
-                        {prep.questionsToAsk.map((q, i) => (
-                          <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-green-400/60">
-                            {q}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {prep.questionsToAsk && prep.questionsToAsk.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-green-400 flex items-center gap-1.5 mb-2">
+                          <HelpCircle size={14} />
+                          Questions to Ask
+                        </h4>
+                        <ul className="space-y-2">
+                          {prep.questionsToAsk.map((q, i) => (
+                            <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-green-400/60">
+                              {q}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                    {/* Experience to Emphasize */}
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mb-2">
-                        <Briefcase size={14} />
-                        Experience to Emphasize
-                      </h4>
-                      <ul className="space-y-2">
-                        {prep.experienceToEmphasize.map((exp, i) => (
-                          <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-400/60">
-                            {exp}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
+                    {prep.experienceToEmphasize && prep.experienceToEmphasize.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-1.5 mb-2">
+                          <Briefcase size={14} />
+                          Experience to Emphasize
+                        </h4>
+                        <ul className="space-y-2">
+                          {prep.experienceToEmphasize.map((exp, i) => (
+                            <li key={i} className="text-sm leading-relaxed pl-4 relative before:content-[''] before:absolute before:left-0 before:top-2 before:w-1.5 before:h-1.5 before:rounded-full before:bg-amber-400/60">
+                              {exp}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
-                    {/* Additional Advice */}
-                    <div>
-                      <h4 className="text-xs font-semibold uppercase tracking-wider text-purple-400 flex items-center gap-1.5 mb-2">
-                        <Lightbulb size={14} />
-                        Additional Advice
-                      </h4>
-                      <p className="text-sm leading-relaxed text-text-secondary-dark">
-                        {prep.additionalAdvice}
-                      </p>
-                    </div>
+                    {prep.additionalAdvice && (
+                      <div>
+                        <h4 className="text-xs font-semibold uppercase tracking-wider text-purple-400 flex items-center gap-1.5 mb-2">
+                          <Lightbulb size={14} />
+                          Additional Advice
+                        </h4>
+                        <p className="text-sm leading-relaxed text-text-secondary-dark">
+                          {prep.additionalAdvice}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
