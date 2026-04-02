@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Download, Loader, Upload, Trash2, FileText, Paperclip, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, Download, Loader, Trash2, FileText, Paperclip, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useScrollLock } from '../hooks/useScrollLock';
 import {
@@ -23,6 +23,7 @@ import InterviewPrep from '../components/interview/InterviewPrep';
 import ReferenceRecommendations from '../components/references/ReferenceRecommendations';
 import Toast from '../components/layout/Toast';
 import { Skeleton } from '../components/ui/Skeleton';
+import DropZone from '../components/ui/DropZone';
 import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
 import type { OpportunityStatus } from '../types';
@@ -140,22 +141,23 @@ export default function OpportunityPage() {
     [id, addOutreachMessages]
   );
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !id) return;
+  const handleFilesUpload = async (files: File[]) => {
+    if (!id) return;
     setUploading(true);
     try {
-      const storageRef = ref(storage, `research/${id}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      await addResearchFile({
-        opportunityId: id,
-        fileUrl: url,
-        fileType: file.type,
-        fileName: file.name,
-        caption: '',
-      });
-      setToast({ message: 'File uploaded', type: 'success' });
+      for (const file of files) {
+        const storageRef = ref(storage, `research/${id}/${Date.now()}_${file.name}`);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        await addResearchFile({
+          opportunityId: id,
+          fileUrl: url,
+          fileType: file.type,
+          fileName: file.name,
+          caption: '',
+        });
+      }
+      setToast({ message: `${files.length} file${files.length > 1 ? 's' : ''} uploaded`, type: 'success' });
     } catch {
       setToast({ message: 'Upload failed', type: 'error' });
     } finally {
@@ -363,18 +365,10 @@ export default function OpportunityPage() {
 
               {activeTab === 'research' && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors text-sm font-medium cursor-pointer w-fit">
-                      {uploading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
-                      {uploading ? 'Uploading...' : 'Upload File'}
-                      <input
-                        type="file"
-                        onChange={handleFileUpload}
-                        className="hidden"
-                        accept="image/*,.pdf,.doc,.docx,.txt"
-                      />
-                    </label>
-                  </div>
+                  <DropZone
+                    onFilesSelected={handleFilesUpload}
+                    uploading={uploading}
+                  />
 
                   {researchFiles.length === 0 ? (
                     <div className="text-center py-12 text-text-secondary-dark border border-dashed border-border-dark rounded-xl">
