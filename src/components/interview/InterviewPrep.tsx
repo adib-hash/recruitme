@@ -19,8 +19,7 @@ import {
   PenLine,
 } from 'lucide-react';
 import type { InterviewerInfo, InterviewPrepResult } from '../../types';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../lib/firebase';
+import { upload } from '@vercel/blob/client';
 import MarkdownBrief from './MarkdownBrief';
 
 interface InterviewPrepProps {
@@ -100,9 +99,11 @@ export default function InterviewPrep({
     if (!file) return;
     setUploading(true);
     try {
-      const storageRef = ref(storage, `interview/${opportunityId}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
+      });
+      const url = blob.url;
       setPendingFiles((prev) => [...prev, { url, name: file.name }]);
       onToast('File uploaded', 'success');
     } catch {

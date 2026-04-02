@@ -27,8 +27,7 @@ import DropZone from '../components/ui/DropZone';
 import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
 import type { OpportunityStatus } from '../types';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { upload } from '@vercel/blob/client';
 
 type Tab = 'resume' | 'outreach' | 'research' | 'interview' | 'notes';
 
@@ -141,17 +140,33 @@ export default function OpportunityPage() {
     [id, addOutreachMessages]
   );
 
+  const handleDeleteFile = async (fileId: string, fileUrl: string) => {
+    try {
+      // Delete from Vercel Blob
+      await fetch('/api/delete-blob', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: fileUrl }),
+      });
+    } catch {
+      // Blob deletion is best-effort; still remove from Firestore
+    }
+    await deleteResearchFile(fileId);
+    setToast({ message: 'File deleted', type: 'success' });
+  };
+
   const handleFilesUpload = async (files: File[]) => {
     if (!id) return;
     setUploading(true);
     try {
       for (const file of files) {
-        const storageRef = ref(storage, `research/${id}/${Date.now()}_${file.name}`);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+        });
         await addResearchFile({
           opportunityId: id,
-          fileUrl: url,
+          fileUrl: blob.url,
           fileType: file.type,
           fileName: file.name,
           caption: '',
@@ -399,7 +414,7 @@ export default function OpportunityPage() {
                             <p className="text-xs text-text-secondary-dark">{file.fileType}</p>
                           </div>
                           <button
-                            onClick={() => deleteResearchFile(file.id)}
+                            onClick={() => handleDeleteFile(file.id, file.fileUrl)}
                             className="p-2.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-text-secondary-dark hover:text-red-400 transition-all cursor-pointer"
                           >
                             <Trash2 size={14} />
