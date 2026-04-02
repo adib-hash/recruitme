@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Download, Loader, Upload, Trash2, FileText, Paperclip, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useScrollLock } from '../hooks/useScrollLock';
 import {
   useOpportunity,
   useOpportunities,
@@ -62,6 +63,8 @@ export default function OpportunityPage() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [showDesktopChat, setShowDesktopChat] = useState(true);
+
+  useScrollLock(showChat);
 
   // Load notes from opportunity
   if (opportunity && !notesLoaded) {

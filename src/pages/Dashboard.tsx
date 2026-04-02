@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useScrollLock } from '../hooks/useScrollLock';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, ChevronRight, Trash2, Search, ArrowUpDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -46,6 +47,8 @@ export default function Dashboard() {
   const { addOpportunity } = useOpportunities();
   const [form, setForm] = useState({ title: '', company: '', archetypeId: '', jdText: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  useScrollLock(showForm);
 
   const archetypeMap = useMemo(() => {
     const map: Record<string, string> = {};

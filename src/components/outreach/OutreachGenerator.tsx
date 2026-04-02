@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Copy, Check, Loader, Sparkles } from 'lucide-react';
+import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import type { OutreachAudience, OutreachMedium, OutreachMessage, ResumeContent } from '../../types';
 import { generateOutreachMessages } from '../../lib/ai';
 
@@ -23,6 +24,91 @@ interface OutreachGeneratorProps {
   company: string;
   role: string;
   onGenerate: (audience: string, medium: string, bodies: string[]) => void;
+}
+
+function SwipeableOutreachCard({
+  msg,
+  copiedId,
+  onCopy,
+}: {
+  msg: OutreachMessage;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const x = useMotionValue(0);
+  const copyOpacity = useTransform(x, [-80, -40], [1, 0]);
+  const copyScale = useTransform(x, [-80, -40], [1, 0.8]);
+  const touchStartRef = useRef<{ x: number; y: number; locked: 'x' | 'y' | null }>({ x: 0, y: 0, locked: null });
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, locked: null };
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+
+    // Lock direction after ~10px of movement
+    if (!touchStartRef.current.locked) {
+      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+        touchStartRef.current.locked = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+      }
+    }
+
+    if (touchStartRef.current.locked === 'x' && dx < 0) {
+      e.preventDefault();
+      x.set(Math.max(dx, -100));
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (x.get() < -60) {
+      onCopy(msg.id, msg.body);
+    }
+    x.set(0);
+    touchStartRef.current.locked = null;
+  };
+
+  return (
+    <div className="relative overflow-hidden rounded-xl">
+      {/* Swipe reveal background */}
+      <motion.div
+        className="absolute inset-y-0 right-0 w-20 flex items-center justify-center bg-accent/20 rounded-r-xl"
+        style={{ opacity: copyOpacity, scale: copyScale }}
+      >
+        <Copy size={18} className="text-accent" />
+      </motion.div>
+
+      <motion.div
+        className="relative bg-surface-card-dark border border-border-dark rounded-xl p-4 group"
+        style={{ x }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <span className="text-xs text-text-secondary-dark mb-2 block">Variant {msg.variantNumber}</span>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+          </div>
+          <button
+            onClick={() => onCopy(msg.id, msg.body)}
+            className="shrink-0 p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+            title="Copy to clipboard"
+          >
+            {copiedId === msg.id ? (
+              <Check size={16} className="text-green-400" />
+            ) : (
+              <Copy size={16} className="text-text-secondary-dark" />
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 export default function OutreachGenerator({
@@ -114,37 +200,29 @@ export default function OutreachGenerator({
         </button>
       </div>
 
-      {filteredMessages.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-sm font-medium text-text-secondary-dark">
-            {audiences.find((a) => a.key === audience)?.label} via {mediums.find((m) => m.key === medium)?.label}
-          </h4>
-          {filteredMessages.map((msg) => (
-            <div
-              key={msg.id}
-              className="relative bg-surface-card-dark border border-border-dark rounded-xl p-4 group"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <span className="text-xs text-text-secondary-dark mb-2 block">Variant {msg.variantNumber}</span>
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
-                </div>
-                <button
-                  onClick={() => handleCopy(msg.id, msg.body)}
-                  className="shrink-0 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
-                  title="Copy to clipboard"
-                >
-                  {copiedId === msg.id ? (
-                    <Check size={16} className="text-green-400" />
-                  ) : (
-                    <Copy size={16} className="text-text-secondary-dark" />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <AnimatePresence mode="popLayout">
+        {filteredMessages.length > 0 && (
+          <motion.div
+            className="space-y-3"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <h4 className="text-sm font-medium text-text-secondary-dark">
+              {audiences.find((a) => a.key === audience)?.label} via {mediums.find((m) => m.key === medium)?.label}
+            </h4>
+            {filteredMessages.map((msg) => (
+              <SwipeableOutreachCard
+                key={msg.id}
+                msg={msg}
+                copiedId={copiedId}
+                onCopy={handleCopy}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
