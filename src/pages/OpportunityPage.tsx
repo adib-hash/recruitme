@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Sparkles, Download, Loader, Upload, Trash2, FileText, Paperclip } from 'lucide-react';
+import { ArrowLeft, Sparkles, Download, Loader, Upload, Trash2, FileText, Paperclip, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   useOpportunity,
   useOpportunities,
@@ -20,6 +21,7 @@ import OutreachGenerator from '../components/outreach/OutreachGenerator';
 import InterviewPrep from '../components/interview/InterviewPrep';
 import ReferenceRecommendations from '../components/references/ReferenceRecommendations';
 import Toast from '../components/layout/Toast';
+import { Skeleton } from '../components/ui/Skeleton';
 import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
 import type { OpportunityStatus } from '../types';
@@ -27,6 +29,14 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 
 type Tab = 'resume' | 'outreach' | 'research' | 'interview' | 'notes';
+
+const tabs: { key: Tab; label: string }[] = [
+  { key: 'resume', label: 'Resume' },
+  { key: 'outreach', label: 'Outreach' },
+  { key: 'research', label: 'Research' },
+  { key: 'interview', label: 'Interview Prep' },
+  { key: 'notes', label: 'Notes' },
+];
 
 export default function OpportunityPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +61,7 @@ export default function OpportunityPage() {
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [showChat, setShowChat] = useState(false);
+  const [showDesktopChat, setShowDesktopChat] = useState(true);
 
   // Load notes from opportunity
   if (opportunity && !notesLoaded) {
@@ -177,9 +188,22 @@ export default function OpportunityPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="animate-spin text-accent" size={24} />
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="flex items-center gap-3 mb-4">
+          <Skeleton className="w-10 h-10 rounded-lg" />
+          <div>
+            <Skeleton className="h-6 w-48 mb-1.5" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </div>
+        <Skeleton className="h-10 w-full mb-6 rounded-xl" />
+        <div className="flex gap-2 mb-6">
+          {tabs.map((t) => (
+            <Skeleton key={t.key} className="h-9 w-24 rounded-lg" />
+          ))}
+        </div>
+        <Skeleton className="h-96 w-full rounded-xl" />
+      </motion.div>
     );
   }
 
@@ -191,21 +215,17 @@ export default function OpportunityPage() {
     );
   }
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'resume', label: 'Resume' },
-    { key: 'outreach', label: 'Outreach' },
-    { key: 'research', label: 'Research' },
-    { key: 'interview', label: 'Interview Prep' },
-    { key: 'notes', label: 'Notes' },
-  ];
-
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
+    >
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <button
           onClick={() => navigate('/')}
-          className="p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          className="p-2.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
         >
           <ArrowLeft size={18} />
         </button>
@@ -220,207 +240,234 @@ export default function OpportunityPage() {
         <StatusPipeline current={opportunity.status} onChange={handleStatusChange} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 overflow-x-auto pb-1">
+      {/* Tabs — underline style with animated indicator */}
+      <div className="relative flex gap-1 mb-6 overflow-x-auto border-b border-border-dark">
         {tabs.map((t) => (
           <button
             key={t.key}
             onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
+            className={`relative px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors cursor-pointer ${
               activeTab === t.key
-                ? 'bg-accent text-white'
-                : 'text-text-secondary-dark hover:bg-white/5'
+                ? 'text-accent'
+                : 'text-text-secondary-dark hover:text-text-primary-dark'
             }`}
           >
             {t.label}
+            {activeTab === t.key && (
+              <motion.div
+                layoutId="tab-indicator"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-accent rounded-full"
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
+      {/* Two-panel layout: content + persistent chat sidebar */}
       <div className="flex gap-6">
+        {/* Main content area */}
         <div className="flex-1 min-w-0">
-          {activeTab === 'resume' && (
-            <div>
-              {/* Actions */}
-              <div className="flex flex-wrap gap-3 mb-6">
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover disabled:opacity-50 transition-colors text-sm font-medium cursor-pointer"
-                >
-                  {generating ? <Loader size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                  {currentResume ? 'Regenerate' : 'Generate Resume'}
-                </button>
-                {currentResume && (
-                  <button
-                    onClick={handleExport}
-                    disabled={exporting}
-                    className="flex items-center gap-2 px-4 py-2.5 border border-border-dark rounded-xl hover:bg-white/5 transition-colors text-sm cursor-pointer"
-                  >
-                    {exporting ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
-                    Export PDF
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowChat(!showChat)}
-                  className="flex items-center gap-2 px-4 py-2.5 border border-border-dark rounded-xl hover:bg-white/5 transition-colors text-sm cursor-pointer lg:hidden"
-                >
-                  Chat
-                </button>
-              </div>
-
-              {/* Resume Preview */}
-              {currentResume ? (
-                <div className="overflow-auto rounded-xl border border-border-dark">
-                  <ResumePreview
-                    content={currentResume.contentJson}
-                    template={archetype?.visualTemplate || 'classic'}
-                  />
-                </div>
-              ) : (
-                <div className="text-center py-16 text-text-secondary-dark border border-dashed border-border-dark rounded-xl">
-                  <FileText size={40} className="mx-auto mb-4 opacity-40" />
-                  <p className="text-base">No resume generated yet.</p>
-                  <p className="text-sm mt-1">
-                    {archetype
-                      ? 'Click "Generate Resume" to create a tailored version.'
-                      : 'Select an archetype first to generate a tailored resume.'}
-                  </p>
-                </div>
-              )}
-
-              {/* Job Description */}
-              {opportunity.jdText && (
-                <div className="mt-6">
-                  <h3 className="text-sm font-semibold mb-2 text-text-secondary-dark">Job Description</h3>
-                  <div className="bg-surface-card-dark border border-border-dark rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
-                    {opportunity.jdText}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'outreach' && (
-            <OutreachGenerator
-              messages={outreachMessages}
-              resumeContent={currentResume?.contentJson || null}
-              jobDescription={opportunity.jdText}
-              company={opportunity.company}
-              role={opportunity.title}
-              onGenerate={handleOutreachGenerate}
-            />
-          )}
-
-          {activeTab === 'research' && (
-            <div className="space-y-4">
-              <div>
-                <label className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors text-sm font-medium cursor-pointer w-fit">
-                  {uploading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
-                  {uploading ? 'Uploading...' : 'Upload File'}
-                  <input
-                    type="file"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    accept="image/*,.pdf,.doc,.docx,.txt"
-                  />
-                </label>
-              </div>
-
-              {researchFiles.length === 0 ? (
-                <div className="text-center py-12 text-text-secondary-dark border border-dashed border-border-dark rounded-xl">
-                  <Paperclip size={32} className="mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">No research files yet.</p>
-                  <p className="text-xs mt-1">Upload screenshots, PDFs, or notes as context for AI.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {researchFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      className="bg-surface-card-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 group"
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.12 }}
+            >
+              {activeTab === 'resume' && (
+                <div>
+                  {/* Actions */}
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    <button
+                      onClick={handleGenerate}
+                      disabled={generating}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover disabled:opacity-50 transition-colors text-sm font-medium cursor-pointer"
                     >
-                      {file.fileType.startsWith('image/') ? (
-                        <img
-                          src={file.fileUrl}
-                          alt={file.fileName}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-white/5 rounded-lg flex items-center justify-center">
-                          <FileText size={24} className="text-text-secondary-dark" />
-                        </div>
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{file.fileName}</p>
-                        <p className="text-xs text-text-secondary-dark">{file.fileType}</p>
-                      </div>
+                      {generating ? <Loader size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                      {currentResume ? 'Regenerate' : 'Generate Resume'}
+                    </button>
+                    {currentResume && (
                       <button
-                        onClick={() => deleteResearchFile(file.id)}
-                        className="p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-text-secondary-dark hover:text-red-400 transition-all cursor-pointer"
+                        onClick={handleExport}
+                        disabled={exporting}
+                        className="flex items-center gap-2 px-4 py-2.5 border border-border-dark rounded-xl hover:bg-white/5 transition-colors text-sm cursor-pointer"
                       >
-                        <Trash2 size={14} />
+                        {exporting ? <Loader size={16} className="animate-spin" /> : <Download size={16} />}
+                        Export PDF
                       </button>
+                    )}
+                  </div>
+
+                  {/* Resume Preview or generating state */}
+                  {generating ? (
+                    <div className="border border-dashed border-accent/30 rounded-xl p-12 text-center">
+                      <div className="inline-flex items-center gap-3 text-accent">
+                        <Loader size={20} className="animate-spin" />
+                        <span className="text-sm font-medium">Generating tailored resume...</span>
+                      </div>
+                      <div className="mt-4 h-1 w-48 mx-auto bg-white/5 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-accent/50 rounded-full"
+                          initial={{ width: '0%' }}
+                          animate={{ width: '80%' }}
+                          transition={{ duration: 2, ease: 'easeOut' }}
+                        />
+                      </div>
                     </div>
-                  ))}
+                  ) : currentResume ? (
+                    <div className="overflow-auto rounded-xl border border-border-dark">
+                      <ResumePreview
+                        content={currentResume.contentJson}
+                        template={archetype?.visualTemplate || 'classic'}
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-center py-16 text-text-secondary-dark border border-dashed border-border-dark rounded-xl">
+                      <FileText size={40} className="mx-auto mb-4 opacity-40" />
+                      <p className="text-base">No resume generated yet.</p>
+                      <p className="text-sm mt-1">
+                        {archetype
+                          ? 'Click "Generate Resume" to create a tailored version.'
+                          : 'Select an archetype first to generate a tailored resume.'}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Job Description */}
+                  {opportunity.jdText && (
+                    <div className="mt-6">
+                      <h3 className="text-sm font-semibold mb-2 text-text-secondary-dark">Job Description</h3>
+                      <div className="bg-surface-card-dark border border-border-dark rounded-xl p-4 text-sm leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto">
+                        {opportunity.jdText}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
-            </div>
-          )}
 
-          {activeTab === 'interview' && (
-            <div className="space-y-8">
-              <InterviewPrep
-                opportunityId={opportunity.id}
-                company={opportunity.company}
-                role={opportunity.title}
-                jobDescription={opportunity.jdText}
-                interviewers={interviewers}
-                prepResults={prepResults}
-                onAddInterviewer={addInterviewer}
-                onUpdateInterviewer={updateInterviewer}
-                onDeleteInterviewer={deleteInterviewer}
-                onGeneratePrep={handleGeneratePrep}
-                onUpdatePrep={updatePrepResult}
-                onDeletePrep={deletePrepResult}
-                generating={generatingPrep}
-                onToast={(message, type) => setToast({ message, type })}
-              />
-
-              <div className="border-t border-border-dark pt-6">
-                <ReferenceRecommendations
-                  references={references}
+              {activeTab === 'outreach' && (
+                <OutreachGenerator
+                  messages={outreachMessages}
+                  resumeContent={currentResume?.contentJson || null}
                   jobDescription={opportunity.jdText}
                   company={opportunity.company}
                   role={opportunity.title}
+                  onGenerate={handleOutreachGenerate}
                 />
-              </div>
-            </div>
-          )}
+              )}
 
-          {activeTab === 'notes' && (
-            <div className="space-y-3">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={12}
-                placeholder="Your notes about this opportunity..."
-                className="w-full bg-surface-card-dark border border-border-dark rounded-xl px-4 py-3 text-sm outline-none focus:border-accent transition-colors resize-none text-text-primary-dark leading-relaxed"
-              />
-              <button
-                onClick={handleSaveNotes}
-                className="px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors text-sm font-medium cursor-pointer"
-              >
-                Save Notes
-              </button>
-            </div>
-          )}
+              {activeTab === 'research' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center gap-2 px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors text-sm font-medium cursor-pointer w-fit">
+                      {uploading ? <Loader size={16} className="animate-spin" /> : <Upload size={16} />}
+                      {uploading ? 'Uploading...' : 'Upload File'}
+                      <input
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        accept="image/*,.pdf,.doc,.docx,.txt"
+                      />
+                    </label>
+                  </div>
+
+                  {researchFiles.length === 0 ? (
+                    <div className="text-center py-12 text-text-secondary-dark border border-dashed border-border-dark rounded-xl">
+                      <Paperclip size={32} className="mx-auto mb-3 opacity-40" />
+                      <p className="text-sm">No research files yet.</p>
+                      <p className="text-xs mt-1">Upload screenshots, PDFs, or notes as context for AI.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {researchFiles.map((file) => (
+                        <div
+                          key={file.id}
+                          className="bg-surface-card-dark border border-border-dark rounded-xl p-4 flex items-start gap-3 group"
+                        >
+                          {file.fileType.startsWith('image/') ? (
+                            <img
+                              src={file.fileUrl}
+                              alt={file.fileName}
+                              className="w-16 h-16 object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-16 h-16 bg-white/5 rounded-lg flex items-center justify-center">
+                              <FileText size={24} className="text-text-secondary-dark" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{file.fileName}</p>
+                            <p className="text-xs text-text-secondary-dark">{file.fileType}</p>
+                          </div>
+                          <button
+                            onClick={() => deleteResearchFile(file.id)}
+                            className="p-2.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/10 text-text-secondary-dark hover:text-red-400 transition-all cursor-pointer"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'interview' && (
+                <div className="space-y-8">
+                  <InterviewPrep
+                    opportunityId={opportunity.id}
+                    company={opportunity.company}
+                    role={opportunity.title}
+                    jobDescription={opportunity.jdText}
+                    interviewers={interviewers}
+                    prepResults={prepResults}
+                    onAddInterviewer={addInterviewer}
+                    onUpdateInterviewer={updateInterviewer}
+                    onDeleteInterviewer={deleteInterviewer}
+                    onGeneratePrep={handleGeneratePrep}
+                    onUpdatePrep={updatePrepResult}
+                    onDeletePrep={deletePrepResult}
+                    generating={generatingPrep}
+                    onToast={(message, type) => setToast({ message, type })}
+                  />
+
+                  <div className="border-t border-border-dark pt-6">
+                    <ReferenceRecommendations
+                      references={references}
+                      jobDescription={opportunity.jdText}
+                      company={opportunity.company}
+                      role={opportunity.title}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'notes' && (
+                <div className="space-y-3">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={12}
+                    placeholder="Your notes about this opportunity..."
+                    className="w-full bg-surface-card-dark border border-border-dark rounded-xl px-4 py-3 text-sm outline-none focus:border-accent transition-colors resize-none text-text-primary-dark leading-relaxed"
+                  />
+                  <button
+                    onClick={handleSaveNotes}
+                    className="px-4 py-2.5 bg-accent text-white rounded-xl hover:bg-accent-hover transition-colors text-sm font-medium cursor-pointer"
+                  >
+                    Save Notes
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        {/* Chat Sidebar - Desktop */}
-        {activeTab === 'resume' && (
-          <div className={`w-80 shrink-0 border border-border-dark rounded-xl overflow-hidden h-[calc(100vh-200px)] hidden lg:block`}>
+        {/* Chat Sidebar - Desktop (persistent, all tabs) */}
+        {showDesktopChat && (
+          <div className="w-80 shrink-0 border border-border-dark rounded-xl overflow-hidden h-[calc(100vh-200px)] hidden lg:block sticky top-8">
             <ChatSidebar
               messages={chatMessages}
               resumeContent={currentResume?.contentJson || null}
@@ -430,25 +477,55 @@ export default function OpportunityPage() {
         )}
       </div>
 
-      {/* Chat Sidebar - Mobile Overlay */}
-      {showChat && activeTab === 'resume' && (
-        <div className="fixed inset-0 z-50 lg:hidden" onClick={() => setShowChat(false)}>
-          <div className="absolute inset-0 bg-black/60" />
-          <div
-            className="absolute bottom-0 left-0 right-0 bg-surface-dark border-t border-border-dark rounded-t-2xl h-[70vh]"
-            onClick={(e) => e.stopPropagation()}
+      {/* Desktop chat toggle */}
+      <button
+        onClick={() => setShowDesktopChat(!showDesktopChat)}
+        className="fixed bottom-6 right-6 p-3 bg-accent text-white rounded-full shadow-lg hover:bg-accent-hover transition-colors cursor-pointer hidden lg:flex items-center justify-center z-40"
+        title={showDesktopChat ? 'Hide chat' : 'Show chat'}
+      >
+        <MessageCircle size={20} />
+      </button>
+
+      {/* Mobile chat floating button */}
+      <button
+        onClick={() => setShowChat(true)}
+        className="fixed bottom-6 right-6 p-3.5 bg-accent text-white rounded-full shadow-lg hover:bg-accent-hover transition-colors cursor-pointer lg:hidden flex items-center justify-center z-40"
+      >
+        <MessageCircle size={20} />
+      </button>
+
+      {/* Chat Sidebar - Mobile Bottom Sheet */}
+      <AnimatePresence>
+        {showChat && (
+          <motion.div
+            className="fixed inset-0 z-50 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={() => setShowChat(false)}
           >
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
-            <ChatSidebar
-              messages={chatMessages}
-              resumeContent={currentResume?.contentJson || null}
-              onSendMessage={handleChatMessage}
-            />
-          </div>
-        </div>
-      )}
+            <div className="absolute inset-0 bg-black/60" />
+            <motion.div
+              className="absolute bottom-0 left-0 right-0 bg-surface-dark border-t border-border-dark rounded-t-2xl h-[70vh]"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mt-3 mb-1" />
+              <ChatSidebar
+                messages={chatMessages}
+                resumeContent={currentResume?.contentJson || null}
+                onSendMessage={handleChatMessage}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    </motion.div>
   );
 }
