@@ -57,6 +57,12 @@ function parseOpportunity(id: string, data: DocumentData): Opportunity {
   };
 }
 
+function logError(context: string) {
+  return (err: Error) => {
+    console.error(`Firestore ${context} error:`, err.message);
+  };
+}
+
 // Archetypes
 export function useArchetypes() {
   const [archetypes, setArchetypes] = useState<Archetype[]>([]);
@@ -71,6 +77,7 @@ export function useArchetypes() {
         setLoading(false);
       },
       (err) => {
+        logError('archetypes')(err);
         setError(err.message);
         setLoading(false);
       }
@@ -105,12 +112,19 @@ export function useArchetype(id: string | undefined) {
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
-    const unsub = onSnapshot(doc(db, 'archetypes', id), (snap) => {
-      if (snap.exists()) {
-        setArchetype(parseArchetype(snap.id, snap.data()));
+    const unsub = onSnapshot(
+      doc(db, 'archetypes', id),
+      (snap) => {
+        if (snap.exists()) {
+          setArchetype(parseArchetype(snap.id, snap.data()));
+        }
+        setLoading(false);
+      },
+      (err) => {
+        logError('archetype')(err);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
     return unsub;
   }, [id]);
 
@@ -131,6 +145,7 @@ export function useOpportunities() {
         setLoading(false);
       },
       (err) => {
+        logError('opportunities')(err);
         setError(err.message);
         setLoading(false);
       }
@@ -166,12 +181,19 @@ export function useOpportunity(id: string | undefined) {
 
   useEffect(() => {
     if (!id) { setLoading(false); return; }
-    const unsub = onSnapshot(doc(db, 'opportunities', id), (snap) => {
-      if (snap.exists()) {
-        setOpportunity(parseOpportunity(snap.id, snap.data()));
+    const unsub = onSnapshot(
+      doc(db, 'opportunities', id),
+      (snap) => {
+        if (snap.exists()) {
+          setOpportunity(parseOpportunity(snap.id, snap.data()));
+        }
+        setLoading(false);
+      },
+      (err) => {
+        logError('opportunity')(err);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
     return unsub;
   }, [id]);
 
@@ -204,6 +226,10 @@ export function useTailoredResumes(opportunityId: string | undefined) {
             };
           })
         );
+        setLoading(false);
+      },
+      (err) => {
+        logError('tailoredResumes')(err);
         setLoading(false);
       }
     );
@@ -257,6 +283,10 @@ export function useChatHistory(opportunityId: string | undefined) {
           })
         );
         setLoading(false);
+      },
+      (err) => {
+        logError('chatHistory')(err);
+        setLoading(false);
       }
     );
     return unsub;
@@ -302,6 +332,10 @@ export function useOutreachMessages(opportunityId: string | undefined) {
             };
           })
         );
+        setLoading(false);
+      },
+      (err) => {
+        logError('outreachMessages')(err);
         setLoading(false);
       }
     );
@@ -354,6 +388,9 @@ export function useResearchFiles(opportunityId: string | undefined) {
         })
       );
       setLoading(false);
+    }).catch((err) => {
+      logError('researchFiles')(err);
+      setLoading(false);
     });
   }, [opportunityId]);
 
@@ -405,6 +442,10 @@ export function useInterviewerInfo(opportunityId: string | undefined) {
             };
           })
         );
+        setLoading(false);
+      },
+      (err) => {
+        logError('interviewerInfo')(err);
         setLoading(false);
       }
     );
@@ -466,6 +507,10 @@ export function useInterviewPrep(opportunityId: string | undefined) {
           })
         );
         setLoading(false);
+      },
+      (err) => {
+        logError('interviewPrep')(err);
+        setLoading(false);
       }
     );
     return unsub;
@@ -525,6 +570,7 @@ export function useReferences() {
         setLoading(false);
       },
       (err) => {
+        logError('references')(err);
         setError(err.message);
         setLoading(false);
       }
