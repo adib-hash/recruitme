@@ -22,7 +22,7 @@ import ReferenceRecommendations from '../components/references/ReferenceRecommen
 import Toast from '../components/layout/Toast';
 import { generateTailoredResume, generateInterviewPrep } from '../lib/ai';
 import { exportResumePDF } from '../lib/pdf';
-import type { OpportunityStatus, ResumeContent } from '../types';
+import type { OpportunityStatus } from '../types';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
 
@@ -34,7 +34,7 @@ export default function OpportunityPage() {
   const { opportunity, loading } = useOpportunity(id);
   const { updateOpportunity } = useOpportunities();
   const { archetype } = useArchetype(opportunity?.archetypeId);
-  const { resumes, addTailoredResume, updateTailoredResume } = useTailoredResumes(id);
+  const { resumes, addTailoredResume } = useTailoredResumes(id);
   const { messages: chatMessages, addMessage: addChatMessage } = useChatHistory(id);
   const { messages: outreachMessages, addMessages: addOutreachMessages } = useOutreachMessages(id);
   const { files: researchFiles, addFile: addResearchFile, deleteFile: deleteResearchFile } = useResearchFiles(id);

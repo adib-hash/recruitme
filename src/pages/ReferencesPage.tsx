@@ -7,10 +7,11 @@ import {
   Briefcase,
   Mail,
   Phone,
-  Loader,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useReferences } from '../hooks/useFirestore';
 import Toast from '../components/layout/Toast';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 
 export default function ReferencesPage() {
   const { references, loading, addReference, updateReference, deleteReference } = useReferences();
@@ -102,14 +103,24 @@ export default function ReferencesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="animate-spin text-accent" size={24} />
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">References</h1>
+            <p className="text-sm text-text-secondary-dark mt-0.5">Loading...</p>
+          </div>
+        </div>
+        <SkeletonGrid count={4} />
+      </motion.div>
     );
   }
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
+    >
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">References</h1>
@@ -298,6 +309,6 @@ export default function ReferencesPage() {
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    </motion.div>
   );
 }

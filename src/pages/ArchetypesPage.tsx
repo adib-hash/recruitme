@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, FileText, Trash2, Loader } from 'lucide-react';
+import { Plus, FileText, Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useArchetypes } from '../hooks/useFirestore';
 import Toast from '../components/layout/Toast';
+import { SkeletonGrid } from '../components/ui/Skeleton';
 
 export default function ArchetypesPage() {
   const { archetypes, loading, addArchetype, deleteArchetype } = useArchetypes();
@@ -57,14 +59,24 @@ export default function ArchetypesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader className="animate-spin text-accent" size={24} />
-      </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Resume Archetypes</h1>
+            <p className="text-text-secondary-dark text-sm mt-1">Loading...</p>
+          </div>
+        </div>
+        <SkeletonGrid count={3} />
+      </motion.div>
     );
   }
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.15 }}
+    >
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Resume Archetypes</h1>
@@ -159,6 +171,6 @@ export default function ArchetypesPage() {
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-    </div>
+    </motion.div>
   );
 }

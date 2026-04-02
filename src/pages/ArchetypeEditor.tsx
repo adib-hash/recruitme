@@ -4,7 +4,7 @@ import { ArrowLeft, Plus, Trash2, GripVertical, Loader, Save } from 'lucide-reac
 import { useArchetype, useArchetypes } from '../hooks/useFirestore';
 import ResumePreview from '../components/resume/ResumePreview';
 import Toast from '../components/layout/Toast';
-import type { ResumeContent, ResumeSection, ResumeBullet } from '../types';
+import type { ResumeContent } from '../types';
 
 export default function ArchetypeEditor() {
   const { id } = useParams<{ id: string }>();

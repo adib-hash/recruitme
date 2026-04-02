@@ -1,4 +1,4 @@
-import { pdf, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { pdf, Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 import type { ResumeContent } from '../types';
 import { createElement } from 'react';
 
@@ -138,7 +138,7 @@ export async function exportResumePDF(
   content: ResumeContent,
   template: 'classic' | 'modern' | 'minimal' = 'classic'
 ): Promise<void> {
-  const doc = createElement(ResumeDocument, { content, template });
+  const doc = createElement(ResumeDocument, { content, template }) as any;
   const blob = await pdf(doc).toBlob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
